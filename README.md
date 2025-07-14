@@ -90,16 +90,26 @@ Get search performance data from Google Search Console with customizable paramet
 - `aggregationType`: Aggregation method (`auto`, `byNewsShowcasePanel`, `byProperty`, `byPage`)
 - `rowLimit`: Maximum rows to return (default: 1000)
 
-Example:
+**New Filter Parameters:**
+
+- `pageFilter`: Filter results by a specific page URL.
+- `queryFilter`: Filter results by a specific query string.
+- `countryFilter`: Filter by a country using ISO 3166-1 alpha-3 code (e.g., `USA`, `CHN`).
+- `deviceFilter`: Filter by device type (`DESKTOP`, `MOBILE`, `TABLET`).
+- `filterOperator`: The operator for `pageFilter` and `queryFilter`. Can be `equals`, `contains`, `notEquals`, or `notContains`. Defaults to `equals`.
+
+
+Example with Filters:
 
 ```json
 {
   "siteUrl": "https://example.com",
   "startDate": "2024-01-01",
   "endDate": "2024-01-31",
-  "dimensions": "query,country",
-  "type": "web",
-  "rowLimit": 500
+  "dimensions": "page,query",
+  "queryFilter": "ai assistant",
+  "filterOperator": "contains",
+  "deviceFilter": "MOBILE"
 }
 ```
 
