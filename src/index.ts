@@ -18,7 +18,7 @@ import { SearchConsoleService } from './search-console.js';
 const server = new Server(
   {
     name: 'gsc-mcp-server',
-    version: '0.1.0',
+    version: '0.1.1',
   },
   {
     capabilities: {
@@ -84,7 +84,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'search_analytics': {
         const args = SearchAnalyticsSchema.parse(request.params.arguments);
         const siteUrl = args.siteUrl;
-        const requestBody = {
+
+        // --- 动态构建请求体 ---
+        const requestBody: any = {
           startDate: args.startDate,
           endDate: args.endDate,
           dimensions: args.dimensions,
@@ -92,6 +94,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           aggregationType: args.aggregationType,
           rowLimit: args.rowLimit,
         };
+
+        const filters = [];
+        if (args.pageFilter) {
+          filters.push({
+            dimension: 'page',
+            operator: args.filterOperator,
+            expression: args.pageFilter,
+          });
+        }
+        if (args.queryFilter) {
+          filters.push({
+            dimension: 'query',
+            operator: args.filterOperator,
+            expression: args.queryFilter,
+          });
+        }
+        if (args.countryFilter) {
+            filters.push({
+              dimension: 'country',
+              operator: 'equals', // Country filter only supports 'equals'
+              expression: args.countryFilter,
+            });
+        }
+        if (args.deviceFilter) {
+            filters.push({
+              dimension: 'device',
+              operator: 'equals', // Device filter only supports 'equals'
+              expression: args.deviceFilter,
+            });
+        }
+
+        if (filters.length > 0) {
+          requestBody.dimensionFilterGroups = [{ filters }];
+        }
+        // --- 构建结束 ---
+
         const response = await searchConsole.searchAnalytics(siteUrl, requestBody);
         return {
           content: [

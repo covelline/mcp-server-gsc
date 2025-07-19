@@ -30,6 +30,15 @@ export const SearchAnalyticsSchema = GSCBaseSchema.extend({
     .optional()
     .describe('Type of aggregation, such as auto, byNewsShowcasePanel, byProperty, byPage'),
   rowLimit: z.number().default(1000).describe('Maximum number of rows to return'),
+  pageFilter: z.string().optional().describe('Filter by a specific page URL. Use with filterOperator.'),
+  queryFilter: z.string().optional().describe('Filter by a specific query string. Use with filterOperator.'),
+  countryFilter: z.string().optional().describe('Filter by a country using ISO 3166-1 alpha-3 code (e.g., USA, CHN).'),
+  deviceFilter: z.enum(['DESKTOP', 'MOBILE', 'TABLET']).optional().describe('Filter by device type.'),
+  filterOperator: z
+    .enum(['equals', 'contains', 'notEquals', 'notContains'])
+    .default('equals')
+    .optional()
+    .describe('Operator for page and query filters. Defaults to "equals".'),
 });
 
 export const IndexInspectSchema = GSCBaseSchema.extend({
