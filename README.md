@@ -3,6 +3,12 @@
 
 A Model Context Protocol (MCP) server providing access to Google Search Console.
 
+### Sponsored by
+
+<a href="https://macuse.app">
+    <img src="https://macuse.app/logo.png" width="50" alt="Macuse">
+</a>
+
 ## Features
 
 - Search analytics data retrieval with dimensions support
