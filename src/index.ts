@@ -14,6 +14,15 @@ import {
 } from './schemas.js';
 import { z } from 'zod';
 import { SearchConsoleService } from './search-console.js';
+import { OAuth2Manager, OAuth2Config } from './oauth2-manager.js';
+import { 
+  parseCliOptions, 
+  loadEnvConfig, 
+  mergeConfig, 
+  validateConfig, 
+  showHelp, 
+  showErrors 
+} from './cli.js';
 
 const server = new Server(
   {
@@ -29,10 +38,58 @@ const server = new Server(
   },
 );
 
-const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-if (!GOOGLE_APPLICATION_CREDENTIALS) {
-  console.error('GOOGLE_APPLICATION_CREDENTIALS environment variable is required');
-  process.exit(1);
+async function main() {
+  const args = process.argv.slice(2);
+  const cliOptions = parseCliOptions(args);
+  
+  if (cliOptions.help) {
+    showHelp();
+    process.exit(0);
+  }
+
+  const envOptions = loadEnvConfig();
+  const config = mergeConfig(cliOptions, envOptions);
+  const validation = validateConfig(config);
+
+  if (!validation.isValid) {
+    showErrors(validation.errors);
+    process.exit(1);
+  }
+
+  if (config.command === 'setup') {
+    try {
+      const oauth2Config: OAuth2Config = {
+        clientId: config.clientId!,
+        clientSecret: config.clientSecret!,
+        tokenPath: config.tokenPath!,
+      };
+      
+      const oauth2Manager = new OAuth2Manager(oauth2Config);
+      await oauth2Manager.startAuthFlow();
+    } catch (error) {
+      console.error('OAuth2認証のセットアップに失敗しました:', error);
+      process.exit(1);
+    }
+  } else if (config.command === 'server') {
+    try {
+      const oauth2Config: OAuth2Config = {
+        clientId: config.clientId || '',
+        clientSecret: config.clientSecret || '',
+        tokenPath: config.tokenPath!,
+      };
+      
+      const oauth2Manager = new OAuth2Manager(oauth2Config);
+      const authClient = await oauth2Manager.getAuthClient();
+      
+      console.error('OAuth2認証を使用してサーバーを起動しています...');
+      await runServer(authClient);
+    } catch (error) {
+      console.error('サーバーの起動に失敗しました:', error);
+      console.error('OAuth2認証をセットアップするには、以下のコマンドを実行してください:');
+      console.error(`mcp-server-gsc --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET setup`);
+      process.exit(1);
+    }
+  }
 }
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -78,7 +135,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       throw new Error('Arguments are required');
     }
 
-    const searchConsole = new SearchConsoleService(GOOGLE_APPLICATION_CREDENTIALS);
+    const searchConsole = global.searchConsoleService;
+    if (!searchConsole) {
+      throw new Error('SearchConsoleService is not initialized');
+    }
 
     switch (request.params.name) {
       case 'search_analytics': {
@@ -236,13 +296,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-async function runServer() {
+declare global {
+  var searchConsoleService: SearchConsoleService;
+}
+
+async function runServer(authClient: any) {
+  global.searchConsoleService = new SearchConsoleService(authClient);
+  
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('Google Search Console MCP Server running on stdio');
 }
 
-runServer().catch((error) => {
+main().catch((error) => {
   console.error('Fatal error in main():', error);
   process.exit(1);
 });
