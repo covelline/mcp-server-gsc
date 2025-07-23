@@ -1,5 +1,5 @@
 import { google, searchconsole_v1, webmasters_v3 } from 'googleapis';
-import { GoogleAuth } from 'google-auth-library';
+import { OAuth2Client } from 'google-auth-library';
 
 type SearchanalyticsQueryRequest =
   webmasters_v3.Params$Resource$Searchanalytics$Query['requestBody'];
@@ -10,28 +10,23 @@ type IndexInspectRequest =
   searchconsole_v1.Params$Resource$Urlinspection$Index$Inspect['requestBody'];
 
 export class SearchConsoleService {
-  private auth: GoogleAuth;
+  private authClient: OAuth2Client;
 
-  constructor(credentials: string) {
-    this.auth = new google.auth.GoogleAuth({
-      keyFile: credentials,
-      scopes: ['https://www.googleapis.com/auth/webmasters.readonly'],
-    });
+  constructor(authClient: OAuth2Client) {
+    this.authClient = authClient;
   }
 
   private async getWebmasters() {
-    const authClient = await this.auth.getClient();
     return google.webmasters({
       version: 'v3',
-      auth: authClient,
+      auth: this.authClient,
     } as webmasters_v3.Options);
   }
 
   private async getSearchConsole() {
-    const authClient = await this.auth.getClient();
     return google.searchconsole({
       version: 'v1',
-      auth: authClient,
+      auth: this.authClient,
     } as searchconsole_v1.Options);
   }
 
