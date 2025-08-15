@@ -12,24 +12,28 @@ export interface OAuth2Config {
 }
 
 export interface OAuth2Tokens {
-  access_token: string;
+  access_token?: string;
   refresh_token: string;
-  scope: string;
-  token_type: string;
-  expiry_date: number;
+  scope?: string;
+  token_type?: string;
+  expiry_date?: number;
 }
 
 export class OAuth2Manager {
   private config: OAuth2Config;
   private client: OAuth2Client;
+  private readonly clientId: string;
+  private readonly clientSecret: string;
   private readonly redirectUri = 'http://localhost:8080/oauth/callback';
   private readonly scopes = ['https://www.googleapis.com/auth/webmasters'];
 
   constructor(config: OAuth2Config) {
     this.config = config;
+    this.clientId = config.clientId;
+    this.clientSecret = config.clientSecret;
     this.client = new OAuth2Client(
-      config.clientId,
-      config.clientSecret,
+      this.clientId,
+      this.clientSecret,
       this.redirectUri
     );
   }
@@ -148,9 +152,10 @@ export class OAuth2Manager {
       const tokenDir = path.dirname(this.config.tokenPath);
       await fsPromises.mkdir(tokenDir, { recursive: true });
       
+      // refresh_tokenのみをプレーンテキストで保存
       await fsPromises.writeFile(
         this.config.tokenPath,
-        JSON.stringify(tokens, null, 2),
+        tokens.refresh_token,
         { mode: 0o600 }
       );
     } catch (error) {
@@ -158,45 +163,34 @@ export class OAuth2Manager {
     }
   }
 
-  async loadTokens(): Promise<OAuth2Tokens | null> {
+  async loadTokens(): Promise<string | null> {
     try {
       if (!fs.existsSync(this.config.tokenPath)) {
         return null;
       }
 
-      const tokenData = await fsPromises.readFile(this.config.tokenPath, 'utf8');
-      return JSON.parse(tokenData) as OAuth2Tokens;
+      // refresh_tokenをプレーンテキストとして読み込み
+      const refreshToken = await fsPromises.readFile(this.config.tokenPath, 'utf8');
+      return refreshToken.trim();
     } catch (error) {
       throw new Error(`トークンの読み込みに失敗しました: ${error}`);
     }
   }
 
   async getAuthClient(): Promise<OAuth2Client> {
-    const tokens = await this.loadTokens();
+    const refreshToken = await this.loadTokens();
     
-    if (!tokens) {
+    if (!refreshToken) {
       throw new Error(
         'OAuth2トークンが見つかりません。' +
         '`mcp-server-gsc setup` コマンドを実行して認証を完了してください。'
       );
     }
 
-    this.client.setCredentials(tokens);
-
-    if (tokens.expiry_date && Date.now() >= tokens.expiry_date) {
-      try {
-        const { credentials } = await this.client.refreshAccessToken();
-        const refreshedTokens = credentials as OAuth2Tokens;
-        await this.saveTokens(refreshedTokens);
-        console.log('OAuth2トークンが更新されました。');
-      } catch (error) {
-        throw new Error(
-          'OAuth2トークンの更新に失敗しました。' +
-          '`mcp-server-gsc setup` コマンドを実行して再認証してください。' +
-          `エラー: ${error}`
-        );
-      }
-    }
+    // refresh_tokenのみをsetCredentialsに渡す
+    this.client.setCredentials({
+      refresh_token: refreshToken
+    });
 
     return this.client;
   }

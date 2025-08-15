@@ -60,9 +60,9 @@ export function parseCliOptions(args: string[]): CliOptions {
 
 export function loadEnvConfig(): CliOptions {
   return {
-    clientId: process.env.GSC_CLIENT_ID,
-    clientSecret: process.env.GSC_CLIENT_SECRET,
-    tokenPath: process.env.GSC_TOKEN_PATH,
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    tokenPath: process.env.GOOGLE_REFRESH_TOKEN_PATH,
   };
 }
 
@@ -79,14 +79,14 @@ export function validateConfig(config: CliOptions): { isValid: boolean; errors: 
 
   if (config.command === 'setup') {
     if (!config.clientId) {
-      errors.push('クライアントIDが必要です。--client-id オプションまたは GSC_CLIENT_ID 環境変数を設定してください。');
+      errors.push('クライアントIDが必要です。--client-id オプションまたは GOOGLE_CLIENT_ID 環境変数を設定してください。');
     }
     if (!config.clientSecret) {
-      errors.push('クライアントシークレットが必要です。--client-secret オプションまたは GSC_CLIENT_SECRET 環境変数を設定してください。');
+      errors.push('クライアントシークレットが必要です。--client-secret オプションまたは GOOGLE_CLIENT_SECRET 環境変数を設定してください。');
     }
   } else if (config.command === 'server') {
     if (!config.tokenPath) {
-      errors.push('トークンパスが必要です。--token-path オプションまたは GSC_TOKEN_PATH 環境変数を設定してください。');
+      errors.push('トークンパスが必要です。--token-path オプションまたは GOOGLE_REFRESH_TOKEN_PATH 環境変数を設定してください。');
     }
   }
 
@@ -114,17 +114,17 @@ Google Search Console MCP Server
   -h, --help              このヘルプ情報を表示
 
 環境変数:
-  GSC_CLIENT_ID           Google OAuth2クライアントID
-  GSC_CLIENT_SECRET       Google OAuth2クライアントシークレット
-  GSC_TOKEN_PATH          OAuth2トークンの保存パス
+  GOOGLE_CLIENT_ID           Google OAuth2クライアントID
+  GOOGLE_CLIENT_SECRET       Google OAuth2クライアントシークレット
+  GOOGLE_REFRESH_TOKEN_PATH  OAuth2トークンの保存パス
 
 使用例:
   # OAuth2認証をセットアップ
   mcp-server-gsc --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET setup
 
   # 環境変数を使用してセットアップ
-  export GSC_CLIENT_ID=your_client_id
-  export GSC_CLIENT_SECRET=your_client_secret
+  export GOOGLE_CLIENT_ID=your_client_id
+  export GOOGLE_CLIENT_SECRET=your_client_secret
   mcp-server-gsc setup
 
   # MCPサーバーを起動
