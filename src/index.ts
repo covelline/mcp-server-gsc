@@ -63,7 +63,7 @@ async function main() {
       const oauth2Config: OAuth2Config = {
         clientId: config.clientId!,
         clientSecret: config.clientSecret!,
-        tokenPath: config.tokenPath!,
+        refreshToken: config.refreshToken!,
       };
       
       const oauth2Manager = new OAuth2Manager(oauth2Config);
@@ -77,7 +77,7 @@ async function main() {
       const oauth2Config: OAuth2Config = {
         clientId: config.clientId || '',
         clientSecret: config.clientSecret || '',
-        tokenPath: config.tokenPath!,
+        refreshToken: config.refreshToken!,
       };
       
       const oauth2Manager = new OAuth2Manager(oauth2Config);

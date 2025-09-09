@@ -4,7 +4,7 @@ import * as os from 'os';
 export interface CliOptions {
   clientId?: string;
   clientSecret?: string;
-  tokenPath?: string;
+  refreshToken?: string;
   command?: 'setup' | 'server';
   help?: boolean;
 }
@@ -26,9 +26,9 @@ export function parseCliOptions(args: string[]): CliOptions {
           options.clientSecret = args[++i];
         }
         break;
-      case '--token-path':
+      case '--refresh-token':
         if (i + 1 < args.length) {
-          options.tokenPath = args[++i];
+          options.refreshToken = args[++i];
         }
         break;
       case '-h':
@@ -62,7 +62,7 @@ export function loadEnvConfig(): CliOptions {
   return {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    tokenPath: process.env.GOOGLE_REFRESH_TOKEN_PATH,
+    refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
   };
 }
 
@@ -70,7 +70,7 @@ export function mergeConfig(cliOptions: CliOptions, envOptions: CliOptions): Cli
   return {
     ...envOptions,
     ...cliOptions,
-    tokenPath: cliOptions.tokenPath || envOptions.tokenPath || path.join(os.homedir(), '.gsc-oauth-token.json'),
+    refreshToken: cliOptions.refreshToken || envOptions.refreshToken || path.join(os.homedir(), '.gsc-oauth-token.json'),
   };
 }
 
@@ -85,8 +85,8 @@ export function validateConfig(config: CliOptions): { isValid: boolean; errors: 
       errors.push('クライアントシークレットが必要です。--client-secret オプションまたは GOOGLE_CLIENT_SECRET 環境変数を設定してください。');
     }
   } else if (config.command === 'server') {
-    if (!config.tokenPath) {
-      errors.push('トークンパスが必要です。--token-path オプションまたは GOOGLE_REFRESH_TOKEN_PATH 環境変数を設定してください。');
+    if (!config.refreshToken) {
+      errors.push('トークンパスが必要です。--refresh-token オプションまたは GOOGLE_REFRESH_TOKEN 環境変数を設定してください。');
     }
   }
 
@@ -110,7 +110,7 @@ Google Search Console MCP Server
 オプション:
   --client-id <id>        Google OAuth2クライアントID
   --client-secret <secret> Google OAuth2クライアントシークレット
-  --token-path <path>     OAuth2トークンの保存パス (デフォルト: ~/.gsc-oauth-token.json)
+  --refresh-token <refresh_token>     OAuth2トークンの文字列
   -h, --help              このヘルプ情報を表示
 
 環境変数:
@@ -128,7 +128,7 @@ Google Search Console MCP Server
   mcp-server-gsc setup
 
   # MCPサーバーを起動
-  mcp-server-gsc --token-path ~/.gsc-oauth-token.json server
+  mcp-server-gsc --refresh-token YOUR_REFRESH_TOKEN server
 
 詳細な設定方法については、READMEファイルを参照してください。
 `);

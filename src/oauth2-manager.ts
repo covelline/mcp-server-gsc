@@ -8,7 +8,7 @@ import { promises as fsPromises } from 'fs';
 export interface OAuth2Config {
   clientId: string;
   clientSecret: string;
-  tokenPath: string;
+  refreshToken: string;
 }
 
 export interface OAuth2Tokens {
@@ -92,7 +92,6 @@ export class OAuth2Manager {
 
             try {
               const { tokens } = await this.client.getToken(code);
-              await this.saveTokens(tokens as OAuth2Tokens);
 
               res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
               res.end(`
@@ -107,7 +106,8 @@ export class OAuth2Manager {
               
               server.close();
               console.log('OAuth2認証が正常に完了しました。');
-              console.log(`トークンが保存されました: ${this.config.tokenPath}`);
+              console.log(`リフレッシュトークンを取得しました: ${tokens.refresh_token}`);
+              console.log(`リフレッシュトークンは厳重に管理してください。`);
               resolve();
             } catch (tokenError) {
               res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -147,34 +147,8 @@ export class OAuth2Manager {
     });
   }
 
-  async saveTokens(tokens: OAuth2Tokens): Promise<void> {
-    try {
-      const tokenDir = path.dirname(this.config.tokenPath);
-      await fsPromises.mkdir(tokenDir, { recursive: true });
-      
-      // refresh_tokenのみをプレーンテキストで保存
-      await fsPromises.writeFile(
-        this.config.tokenPath,
-        tokens.refresh_token,
-        { mode: 0o600 }
-      );
-    } catch (error) {
-      throw new Error(`トークンの保存に失敗しました: ${error}`);
-    }
-  }
-
   async loadTokens(): Promise<string | null> {
-    try {
-      if (!fs.existsSync(this.config.tokenPath)) {
-        return null;
-      }
-
-      // refresh_tokenをプレーンテキストとして読み込み
-      const refreshToken = await fsPromises.readFile(this.config.tokenPath, 'utf8');
-      return refreshToken.trim();
-    } catch (error) {
-      throw new Error(`トークンの読み込みに失敗しました: ${error}`);
-    }
+    return this.config.refreshToken;
   }
 
   async getAuthClient(): Promise<OAuth2Client> {
