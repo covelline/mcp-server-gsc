@@ -10,6 +10,8 @@ import {
   IndexInspectSchema,
   ListSitemapsSchema,
   SearchAnalyticsSchema,
+  EnhancedSearchAnalyticsSchema,
+  QuickWinsDetectionSchema,
   SubmitSitemapSchema,
 } from './schemas.js';
 import { z } from 'zod';
@@ -26,8 +28,8 @@ import {
 
 const server = new Server(
   {
-    name: 'gsc-mcp-server',
-    version: '0.1.1',
+    name: 'gsc-mcp-server-enhanced',
+    version: '0.2.0',
   },
   {
     capabilities: {
@@ -106,6 +108,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: zodToJsonSchema(SearchAnalyticsSchema),
       },
       {
+        name: 'enhanced_search_analytics',
+        description: 'Enhanced search analytics with up to 25,000 rows, regex filters, and quick wins detection',
+        inputSchema: zodToJsonSchema(EnhancedSearchAnalyticsSchema),
+      },
+      {
+        name: 'detect_quick_wins',
+        description: 'Automatically detect SEO quick wins and optimization opportunities',
+        inputSchema: zodToJsonSchema(QuickWinsDetectionSchema),
+      },
+      {
         name: 'index_inspect',
         description: 'Inspect a URL to see if it is indexed or can be indexed',
         inputSchema: zodToJsonSchema(IndexInspectSchema),
@@ -141,6 +153,129 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     switch (request.params.name) {
+      case 'enhanced_search_analytics': {
+        const args = EnhancedSearchAnalyticsSchema.parse(request.params.arguments);
+        const siteUrl = args.siteUrl;
+
+        // Build enhanced request body
+        const requestBody: any = {
+          startDate: args.startDate,
+          endDate: args.endDate,
+          dimensions: args.dimensions,
+          searchType: args.type,
+          aggregationType: args.aggregationType,
+          rowLimit: args.rowLimit, // Up to 25,000!
+        };
+
+        // Build filters (including regex support)
+        const filters = [];
+        if (args.pageFilter) {
+          filters.push({
+            dimension: 'page',
+            operator: args.filterOperator,
+            expression: args.pageFilter,
+          });
+        }
+        if (args.queryFilter) {
+          filters.push({
+            dimension: 'query',
+            operator: args.filterOperator,
+            expression: args.queryFilter,
+          });
+        }
+        if (args.countryFilter) {
+          filters.push({
+            dimension: 'country',
+            operator: 'equals',
+            expression: args.countryFilter,
+          });
+        }
+        if (args.deviceFilter) {
+          filters.push({
+            dimension: 'device',
+            operator: 'equals',
+            expression: args.deviceFilter,
+          });
+        }
+
+        if (filters.length > 0) {
+          requestBody.dimensionFilterGroups = [{ groupType: 'and', filters }];
+        }
+
+        // Call enhanced search analytics
+        const enhancedOptions = {
+          regexFilter: args.regexFilter,
+          enableQuickWins: args.enableQuickWins,
+          quickWinsThresholds: args.quickWinsThresholds,
+        };
+
+        const response = await searchConsole.enhancedSearchAnalytics(siteUrl, requestBody, enhancedOptions);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(response.data, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'detect_quick_wins': {
+        const args = QuickWinsDetectionSchema.parse(request.params.arguments);
+        
+        // First get search analytics data
+        const requestBody: any = {
+          startDate: args.startDate,
+          endDate: args.endDate,
+          dimensions: ['query', 'page'],
+          rowLimit: 25000, // Maximum for comprehensive analysis
+        };
+
+        const searchResponse = await searchConsole.searchAnalytics(args.siteUrl, requestBody);
+        
+        if (!searchResponse.data.rows) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ message: 'No data available for quick wins analysis' }, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Apply quick wins detection
+        const quickWinsOptions = {
+          enableQuickWins: true,
+          quickWinsThresholds: {
+            minImpressions: args.minImpressions,
+            maxCtr: args.maxCtr,
+            positionRangeMin: args.positionRangeMin,
+            positionRangeMax: args.positionRangeMax,
+          },
+        };
+
+        const enhancedResult = await searchConsole.enhancedSearchAnalytics(
+          args.siteUrl, 
+          requestBody, 
+          quickWinsOptions
+        );
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                quickWins: (enhancedResult.data as any).quickWins,
+                totalOpportunities: (enhancedResult.data as any).quickWins?.length || 0,
+                thresholds: quickWinsOptions.quickWinsThresholds,
+                analysis: 'Quick wins detection completed'
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
       case 'search_analytics': {
         const args = SearchAnalyticsSchema.parse(request.params.arguments);
         const siteUrl = args.siteUrl;
